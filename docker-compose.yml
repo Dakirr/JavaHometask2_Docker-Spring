@@ -1,0 +1,75 @@
+services:
+  api-service:
+    build:
+      context: ./api_service 
+      dockerfile: Dockerfile
+    container_name: api-container
+    ports:
+      - "8082:8080" 
+    networks:
+      - microservices-net
+    depends_on:
+      storage-service:
+        condition: service_healthy
+      analisys-service:
+        condition: service_healthy
+
+  storage-service:
+    build:
+      context: ./storage_service
+      dockerfile: Dockerfile
+    container_name: storage-container
+    ports:
+      - "8080:8080" 
+    networks:
+      - microservices-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - storage_data:/home/springuser/saves
+
+  analisys-service:
+    build:
+      context: ./analisys_service 
+      dockerfile: Dockerfile
+    container_name: analisys-container
+    ports:
+      - "8081:8080" 
+    depends_on:
+      postgres:
+        condition: service_healthy
+      storage-service:
+        condition: service_healthy
+    networks:
+      - microservices-net
+    
+
+  postgres:
+    image: postgres:13
+    container_name: postgres-container
+    environment:
+      POSTGRES_DB: hometask
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Password
+    ports:
+      - "5433:5432"
+    networks:
+      - microservices-net
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hometask"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  storage_data:
+  postgres_data:
+
+
+networks:
+  microservices-net:
+    driver: bridge
+
